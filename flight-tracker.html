@@ -85,7 +85,10 @@ pre{font-family:'DM Mono',monospace;font-size:10.5px;color:#999;white-space:pre-
 .empty-icon{font-size:28px;margin-bottom:10px;opacity:.4}
 .empty p{font-size:12px;letter-spacing:.5px}
 .cost-note{text-align:center;font-size:9px;color:#ddd;margin-top:8px;letter-spacing:.5px}
-.pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;max-height:200px;overflow-y:auto;padding:4px 0}
+.pick-header{font-size:11px;color:#999;margin-bottom:8px}
+.pick-route{font-family:"DM Mono",monospace;font-size:11px;color:#c9a96e;margin-bottom:4px}
+.pick-count{font-size:10px;color:#bbb;letter-spacing:.5px;margin-bottom:10px}
 .pick button{padding:6px 14px;font-size:11px;cursor:pointer;border:1px solid #e0e0e0;background:#fff;color:#999;font-family:'DM Mono',monospace;transition:all .2s}
 .pick button.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
 .pick button:hover{border-color:#c9a96e;color:#c9a96e}
@@ -301,7 +304,14 @@ function delayCls(sec) {
 
 function renderPicker() {
   if (!state.flights || state.flights.length <= 1) return;
-  var html = '<div style="font-size:11px;color:#999;margin-bottom:8px">' + state.flights.length + '件のフライトが見つかりました（日付を選択）:</div><div class="pick">';
+  var selIdx = state.flights.indexOf(state.selected);
+  var first = state.flights[0];
+  var originCode = (first.origin && first.origin.code_iata) || "?";
+  var destCode = (first.destination && first.destination.code_iata) || "?";
+  var html = '<div class="pick-header">' + state.flights.length + '件のフライトが見つかりました（日付を選択）:</div>';
+  html += '<div class="pick-route">' + originCode + ' → ' + destCode + '</div>';
+  html += '<div class="pick-count">全' + state.flights.length + '件中 ' + (selIdx + 1) + '件目を表示中</div>';
+  html += '<div class="pick">';
   state.flights.forEach(function(fl, i) {
     var cls = state.selected === fl ? "on" : "";
     html += '<button class="' + cls + '" onclick="selectFlight(' + i + ')">' + fmtDateTime(fl.scheduled_out || fl.scheduled_in) + '</button>';
@@ -414,12 +424,14 @@ function renderAirport() {
     html += '<table class="atbl"><thead><tr>';
     html += '<th>便名</th><th>IATA</th>';
     html += '<th>' + (dir === "departures" ? "行先" : "出発地") + '</th>';
-    html += '<th>予定時刻</th><th>ゲート</th><th>ステータス</th></tr></thead><tbody>';
+    html += '<th>予定時刻</th><th>ゲート</th><th>ターミナル</th><th>ステータス</th></tr></thead><tbody>';
 
     flights.forEach(function(r) {
       var dest = dir === "departures" ? (r.destination.code_iata || "—") : (r.origin.code_iata || "—");
       var time = dir === "departures" ? fmtTime(r.scheduled_out) : fmtTime(r.scheduled_in);
       var gate = dir === "departures" ? (r.gate_origin || "—") : (r.gate_destination || "—");
+      var rawTerminal = dir === "departures" ? (r.origin && r.origin.terminal) : (r.destination && r.destination.terminal);
+      var terminal = rawTerminal ? "T" + rawTerminal : "—";
       var clickIdent = r.ident_iata || r.ident;
 
       html += '<tr onclick="flightFromAirport(\'' + clickIdent + '\')">';
@@ -428,6 +440,7 @@ function renderAirport() {
       html += '<td class="mono">' + dest + '</td>';
       html += '<td>' + time + '</td>';
       html += '<td style="color:#c9a96e">' + gate + '</td>';
+      html += '<td style="color:#c9a96e">' + terminal + '</td>';
       html += '<td><span class="st ' + stCls(r.status) + '" style="font-size:9px">' + r.status + '</span></td>';
       html += '</tr>';
     });
