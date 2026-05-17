@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Tracker - Tokyo Chauffeur Service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Mono:wght@300;400;500&family=Noto+Sans+JP:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;font-weight:300;background:#fff;color:#1a1a1a;min-height:100vh}
+.hdr{text-align:center;padding:48px 20px 32px;border-bottom:1px solid #eaeaea}
+.hdr-sub{font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:6px;text-transform:uppercase;color:#aaa;margin-bottom:4px}
+.hdr h1{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;letter-spacing:5px;color:#1a1a1a;margin-bottom:10px}
+.hdr p{font-size:11.5px;color:#aaa;letter-spacing:1px}
+.hdr-line{width:36px;height:1px;background:#c9a96e;margin:18px auto 0}
+.ibar{display:flex;justify-content:center;gap:24px;padding:10px 20px;background:#fafafa;border-bottom:1px solid #eaeaea;font-size:10px;color:#aaa;letter-spacing:.5px;flex-wrap:wrap}
+.ibar span{color:#c9a96e;font-weight:400}
+.main{max-width:700px;margin:0 auto;padding:32px 20px 60px}
+.tabs{display:flex;gap:0;margin-bottom:20px;border:1px solid #e0e0e0;width:fit-content}
+.tabs button{font-family:'Noto Sans JP',sans-serif;font-size:11px;font-weight:400;letter-spacing:2px;padding:10px 22px;border:none;background:#fff;color:#bbb;cursor:pointer;transition:all .25s}
+.tabs button:not(:last-child){border-right:1px solid #e0e0e0}
+.tabs button.on{background:#1a1a1a;color:#fff}
+.srch{display:flex;gap:10px;margin-bottom:16px}
+.srch input{flex:1;padding:12px 16px;background:#fafafa;border:1px solid #e0e0e0;color:#1a1a1a;font-family:'DM Mono',monospace;font-size:14px;outline:none;transition:border .3s}
+.srch input:focus{border-color:#c9a96e;box-shadow:0 0 0 3px rgba(201,169,110,.06)}
+.srch input::placeholder{color:#ccc;font-family:'Noto Sans JP',sans-serif;font-weight:300}
+.srch button{padding:12px 28px;background:#1a1a1a;color:#fff;border:none;font-family:'Noto Sans JP',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;cursor:pointer;transition:all .2s}
+.srch button:hover{background:#333}
+.srch button:disabled{background:#ccc;cursor:not-allowed}
+.date-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:11px;color:#999;flex-wrap:wrap}
+.date-row label{letter-spacing:.5px}
+.date-row input[type=date]{padding:8px 12px;border:1px solid #e0e0e0;font-family:'DM Mono',monospace;font-size:12px;color:#1a1a1a;outline:none;background:#fafafa;transition:border .3s}
+.date-row input[type=date]:focus{border-color:#c9a96e}
+.date-row .date-hint{font-size:9px;color:#ccc}
+.qk{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap}
+.qk button{font-family:'DM Mono',monospace;font-size:11px;padding:5px 14px;background:#fff;border:1px solid #e0e0e0;color:#aaa;cursor:pointer;transition:all .2s}
+.qk button:hover{border-color:#c9a96e;color:#c9a96e}
+.alias-hint{font-size:10px;color:#c9a96e;margin-bottom:14px}
+.err-box{background:#ffebee;border:1px solid #ef9a9a;border-radius:4px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#c62828}
+.loading{text-align:center;padding:40px;color:#ccc;font-size:13px;letter-spacing:1px}
+.loading-dot{display:inline-block;animation:pulse 1.2s infinite;color:#c9a96e;font-size:24px}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.card{background:#fff;border:1px solid #e8e8e8;margin-bottom:16px;animation:fadeIn .4s ease}
+.card-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee;flex-wrap:wrap;gap:8px}
+.card-ident{font-family:'DM Mono',monospace;font-size:18px;color:#1a1a1a;font-weight:500;letter-spacing:1px}
+.card-iata{font-family:'DM Mono',monospace;font-size:12px;color:#c9a96e;margin-left:6px}
+.card-airline{font-size:12px;color:#aaa;margin-left:10px;font-weight:300}
+.st{font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;font-weight:500;display:inline-block}
+.st-enroute{background:#eef6fc;color:#2980b9}
+.st-arrived{background:#eafaf1;color:#27ae60}
+.st-scheduled{background:#fdf8ef;color:#c9a96e}
+.st-delayed,.st-cancelled{background:#fdecea;color:#c0392b}
+.card-body{padding:20px}
+.route{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.rpt{text-align:center;min-width:72px}
+.rpt-code{font-family:'DM Mono',monospace;font-size:24px;color:#1a1a1a;font-weight:400}
+.rpt-city{font-size:10px;color:#aaa;margin-top:2px;letter-spacing:.5px}
+.rline{flex:1;display:flex;flex-direction:column;gap:4px;align-items:center}
+.rline-bar{width:100%;height:2px;background:#eee;overflow:hidden;border-radius:1px}
+.rline-fill{height:100%;background:linear-gradient(90deg,#c9a96e,#2980b9);transition:width .8s ease;border-radius:1px}
+.rline-info{font-size:9px;color:#ccc;letter-spacing:1px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gi{padding:14px;background:#fafafa;border:1px solid #f0f0f0}
+.gi-label{font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:#bbb;margin-bottom:5px;font-weight:400}
+.gi-val{font-family:'DM Mono',monospace;font-size:13px;color:#1a1a1a}
+.gi-val.gold{color:#c9a96e}.gi-val.red{color:#c0392b}.gi-val.green{color:#27ae60}
+.pbar{margin-top:18px}
+.pbar-lbl{display:flex;justify-content:space-between;font-size:8.5px;color:#ccc;letter-spacing:1.5px;margin-bottom:5px;text-transform:uppercase}
+.pbar-track{height:2px;background:#eee;overflow:hidden}.pbar-fill{height:100%;background:linear-gradient(90deg,#c9a96e,#2980b9);transition:width 1s ease}
+.jtoggle{font-size:10px;color:#ccc;cursor:pointer;letter-spacing:1px;margin-top:14px;display:inline-block;transition:color .2s}.jtoggle:hover{color:#c9a96e}
+.jwrap{margin-top:12px;padding:16px;background:#fafafa;border:1px solid #eee;max-height:280px;overflow-y:auto}
+pre{font-family:'DM Mono',monospace;font-size:10.5px;color:#999;white-space:pre-wrap;line-height:1.7}
+.apt-tabs{display:flex;gap:0;margin-bottom:16px;border:1px solid #e0e0e0;width:fit-content}
+.apt-tabs button{font-family:'Noto Sans JP',sans-serif;font-size:10px;letter-spacing:1.5px;padding:8px 20px;border:none;background:#fff;color:#bbb;cursor:pointer;transition:all .2s}
+.apt-tabs button:first-child{border-right:1px solid #e0e0e0}
+.apt-tabs button.on{background:#c9a96e;color:#fff}
+.atbl{width:100%;border-collapse:collapse}
+.atbl th{text-align:left;padding:8px 10px;font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:#bbb;border-bottom:1px solid #eee;font-weight:400}
+.atbl td{padding:10px;border-bottom:1px solid #f5f5f5;font-size:12px;color:#999}
+.atbl tr:hover td{background:#faf8f4;cursor:pointer}
+.atbl .mono{font-family:'DM Mono',monospace;color:#1a1a1a;font-weight:400}
+.atbl .iata-col{font-family:'DM Mono',monospace;color:#c9a96e;font-size:10px}
+.empty{text-align:center;padding:60px 20px;color:#ccc}
+.empty-icon{font-size:28px;margin-bottom:10px;opacity:.4}
+.empty p{font-size:12px;letter-spacing:.5px}
+.cost-note{text-align:center;font-size:9px;color:#ddd;margin-top:8px;letter-spacing:.5px}
+.pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.pick button{padding:6px 14px;font-size:11px;cursor:pointer;border:1px solid #e0e0e0;background:#fff;color:#999;font-family:'DM Mono',monospace;transition:all .2s}
+.pick button.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.pick button:hover{border-color:#c9a96e;color:#c9a96e}
+.alert-box{margin-top:12px;padding:10px 14px;background:#ffebee;border-radius:4px;font-size:12px;color:#c62828}
+.ft{text-align:center;padding:24px;border-top:1px solid #eee;font-size:9px;color:#ccc;letter-spacing:2.5px;margin-top:40px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.rpt-code{font-size:18px}.srch{flex-direction:column}.ibar{gap:12px}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-sub">Tokyo Chauffeur Service</div>
+  <h1>FLIGHT TRACKER</h1>
+  <p>FlightAware AeroAPI — 配車最適化システム</p>
+  <div class="hdr-line"></div>
+</div>
+
+<div class="ibar">
+  <div>API: <span>FlightAware AeroAPI v4 (LIVE)</span></div>
+  <div>単価: <span>$0.005 / 約0.75円</span></div>
+  <div>本セッション: <span id="api-count">0</span><span>回呼出</span></div>
+</div>
+
+<div class="main">
+  <div class="tabs">
+    <button class="on" id="tab-flight" onclick="switchTab('flight')">フライトNo検索</button>
+    <button id="tab-airport" onclick="switchTab('airport')">空港別 発着検索</button>
+  </div>
+
+  <div class="srch">
+    <input id="search-input" placeholder="フライトNo（例: JL5, NH10, JAL5）" onkeydown="if(event.key==='Enter')doSearch()">
+    <button id="search-btn" onclick="doSearch()">検索</button>
+  </div>
+
+  <div class="date-row" id="date-row">
+    <label>発着日:</label>
+    <input type="date" id="date-start" />
+    <span>〜</span>
+    <input type="date" id="date-end" />
+    <span class="date-hint">（空欄＝直近を表示。未来日は直近スケジュールで代替表示）</span>
+  </div>
+
+  <div class="qk" id="quick-buttons"></div>
+
+  <div id="alias-area"></div>
+  <div id="error-area"></div>
+  <div id="loading-area"></div>
+  <div id="pick-area"></div>
+  <div id="result-area"></div>
+</div>
+
+<div class="ft">TOKYO CHAUFFEUR SERVICE — FLIGHT OPERATIONS — CET株式会社</div>
+
+<script>
+var GAS_URL = "https://script.google.com/macros/s/AKfycbxOCXVUkJUsRaEuL_Ato5nPuvVGmjTk7nC6clsnAzVsv948jteOuvwQFtw53Do5wUx9yA/exec";
+
+var state = {
+  tab: "flight",
+  flights: null,
+  selected: null,
+  aptFlights: null,
+  aptDir: "departures",
+  showJson: false,
+  apiCalls: 0
+};
+
+function switchTab(t) {
+  state.tab = t;
+  state.flights = null; state.selected = null; state.aptFlights = null;
+  document.getElementById("tab-flight").className = t === "flight" ? "on" : "";
+  document.getElementById("tab-airport").className = t === "airport" ? "on" : "";
+  document.getElementById("search-input").placeholder = t === "flight"
+    ? "フライトNo（例: JL5, NH10, JAL5）"
+    : "空港コード（例: NRT, HND, KIX）";
+  document.getElementById("search-input").value = "";
+  renderQuickButtons();
+  clearAll();
+}
+
+function renderQuickButtons() {
+  var items = state.tab === "flight" ? ["JL5","NH10","JL43","NH853","UA838"] : ["NRT","HND","KIX"];
+  var html = items.map(function(s) {
+    return '<button onclick="quickSearch(\'' + s + '\')">' + s + '</button>';
+  }).join("");
+  document.getElementById("quick-buttons").innerHTML = html;
+}
+
+function quickSearch(val) {
+  document.getElementById("search-input").value = val;
+  doSearch();
+}
+
+function clearAll() {
+  document.getElementById("alias-area").innerHTML = "";
+  document.getElementById("error-area").innerHTML = "";
+  document.getElementById("loading-area").innerHTML = "";
+  document.getElementById("pick-area").innerHTML = "";
+  document.getElementById("result-area").innerHTML = "";
+}
+
+function doSearch() {
+  var q = document.getElementById("search-input").value.trim();
+  if (!q) return;
+  if (state.tab === "flight") searchFlight(q);
+  else searchAirport(q, state.aptDir);
+}
+
+async function apiCall(params) {
+  var url = GAS_URL + "?" + new URLSearchParams(params).toString();
+  var res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  var data = await res.json();
+  if (!data.success) throw new Error(data.error || "不明なエラー");
+  state.apiCalls++;
+  document.getElementById("api-count").textContent = state.apiCalls;
+  return data;
+}
+
+async function searchFlight(ident) {
+  clearAll();
+  state.flights = null; state.selected = null; state.aptFlights = null; state.showJson = false;
+  document.getElementById("loading-area").innerHTML = '<div class="loading"><span class="loading-dot">●</span> FlightAware API に問い合わせ中...</div>';
+  document.getElementById("search-btn").disabled = true;
+
+  try {
+    var params = { action: "flight", ident: ident };
+    var startDate = document.getElementById("date-start").value;
+    var endDate = document.getElementById("date-end").value;
+    if (startDate) params.start = startDate;
+    if (endDate) params.end = endDate;
+
+    var data = await apiCall(params);
+
+    if (data.converted) {
+      document.getElementById("alias-area").innerHTML = '<div class="alias-hint">✓ 「' + data.query + '」→「' + data.resolved + '」に自動変換（IATA → ICAO）</div>';
+    }
+    if (data.dateNote) {
+      document.getElementById("alias-area").innerHTML += '<div class="alias-hint" style="color:#e67e22">⚠ ' + data.dateNote + '</div>';
+    }
+
+    if (data.flights && data.flights.length > 0) {
+      state.flights = data.flights;
+      state.selected = data.flights[0];
+      if (data.flights.length > 1) renderPicker();
+      renderFlight();
+    } else {
+      document.getElementById("error-area").innerHTML = '<div class="err-box">該当するフライトが見つかりませんでした。</div>';
+    }
+  } catch (e) {
+    document.getElementById("error-area").innerHTML = '<div class="err-box">' + e.message + '</div>';
+  }
+  document.getElementById("loading-area").innerHTML = "";
+  document.getElementById("search-btn").disabled = false;
+}
+
+async function searchAirport(airport, dir) {
+  clearAll();
+  state.flights = null; state.selected = null; state.aptFlights = null; state.showJson = false;
+  state.aptDir = dir || "departures";
+  document.getElementById("loading-area").innerHTML = '<div class="loading"><span class="loading-dot">●</span> FlightAware API に問い合わせ中...</div>';
+  document.getElementById("search-btn").disabled = true;
+
+  try {
+    var params = { action: state.aptDir, airport: airport.toUpperCase() };
+    var startDate = document.getElementById("date-start").value;
+    var endDate = document.getElementById("date-end").value;
+    if (startDate) params.start = startDate;
+    if (endDate) params.end = endDate;
+
+    var data = await apiCall(params);
+    state.aptFlights = { airport: data.airport, flights: data.flights || [] };
+    renderAirport();
+  } catch (e) {
+    document.getElementById("error-area").innerHTML = '<div class="err-box">' + e.message + '</div>';
+  }
+  document.getElementById("loading-area").innerHTML = "";
+  document.getElementById("search-btn").disabled = false;
+}
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  try { return new Date(iso).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false }); }
+  catch (e) { return iso; }
+}
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    var d = new Date(iso);
+    return d.toLocaleDateString("ja-JP", { month: "short", day: "numeric" }) + " " +
+      d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false });
+  } catch (e) { return iso; }
+}
+function stCls(s) {
+  if (!s) return "";
+  var l = s.toLowerCase();
+  if (l.includes("en route") || l.includes("airborne")) return "st-enroute";
+  if (l.includes("arrived") || l.includes("landed")) return "st-arrived";
+  if (l.includes("cancel")) return "st-cancelled";
+  if (l.includes("delay")) return "st-delayed";
+  return "st-scheduled";
+}
+function delayTxt(sec) {
+  if (!sec || sec === 0) return "定刻";
+  var m = Math.round(sec / 60);
+  if (m < 0) return Math.abs(m) + "分早着";
+  return m + "分遅延";
+}
+function delayCls(sec) {
+  if (!sec || sec === 0) return "";
+  return sec > 0 ? "red" : "green";
+}
+
+function renderPicker() {
+  if (!state.flights || state.flights.length <= 1) return;
+  var html = '<div style="font-size:11px;color:#999;margin-bottom:8px">' + state.flights.length + '件のフライトが見つかりました（日付を選択）:</div><div class="pick">';
+  state.flights.forEach(function(fl, i) {
+    var cls = state.selected === fl ? "on" : "";
+    html += '<button class="' + cls + '" onclick="selectFlight(' + i + ')">' + fmtDateTime(fl.scheduled_out || fl.scheduled_in) + '</button>';
+  });
+  html += '</div>';
+  document.getElementById("pick-area").innerHTML = html;
+}
+
+function selectFlight(i) {
+  state.selected = state.flights[i];
+  state.showJson = false;
+  renderPicker();
+  renderFlight();
+}
+
+function renderFlight() {
+  var f = state.selected;
+  if (!f) return;
+
+  var iataLabel = (f.ident_iata && f.ident_iata !== f.ident) ? ' <span class="card-iata">(' + f.ident_iata + ')</span>' : '';
+  var airlineName = f.operator_iata || f.operator || "";
+
+  var html = '<div class="card"><div class="card-head"><div>';
+  html += '<span class="card-ident">' + f.ident + '</span>' + iataLabel;
+  html += '<span class="card-airline">' + airlineName + '</span></div>';
+  html += '<span class="st ' + stCls(f.status) + '">' + f.status + '</span></div>';
+  html += '<div class="card-body">';
+
+  // Route
+  html += '<div class="route">';
+  html += '<div class="rpt"><div class="rpt-code">' + (f.origin.code_iata || "?") + '</div><div class="rpt-city">' + (f.origin.city || "") + '</div></div>';
+  html += '<div class="rline"><div style="display:flex;align-items:center;gap:8px;width:100%">';
+  html += '<div class="rline-bar"><div class="rline-fill" style="width:' + (f.progress_percent || 0) + '%"></div></div>';
+  html += '<span style="color:#c9a96e;font-size:12px">✈</span></div>';
+  html += '<div class="rline-info">' + (f.aircraft_type || "—") + ' — ' + (f.progress_percent || 0) + '%</div></div>';
+  html += '<div class="rpt"><div class="rpt-code">' + (f.destination.code_iata || "?") + '</div><div class="rpt-city">' + (f.destination.city || "") + '</div></div>';
+  html += '</div>';
+
+  // Grid
+  var gateOrigin = f.origin.gate ? "Gate " + f.origin.gate : "—";
+  if (f.origin.terminal) gateOrigin += " — T" + f.origin.terminal;
+  var gateDest = f.destination.gate ? "Gate " + f.destination.gate : "未定";
+  if (f.destination.terminal) gateDest += " — T" + f.destination.terminal;
+
+  html += '<div class="grid">';
+  html += gi("出発予定", fmtDateTime(f.scheduled_out));
+  html += gi("出発実績", f.actual_out ? fmtTime(f.actual_out) : "未出発");
+  html += gi("到着予定", fmtDateTime(f.scheduled_in));
+  html += gi("到着推定", fmtTime(f.estimated_in));
+  html += gi("出発ゲート / ターミナル", gateOrigin, "gold");
+  html += gi("到着ゲート / ターミナル", gateDest, "gold");
+  html += gi("出発遅延", delayTxt(f.departure_delay), delayCls(f.departure_delay));
+  html += gi("到着遅延", delayTxt(f.arrival_delay), delayCls(f.arrival_delay));
+  html += '</div>';
+
+  // Alerts
+  if (f.cancelled) html += '<div class="alert-box">この便はキャンセルされました。</div>';
+  if (f.diverted) html += '<div class="alert-box">この便はダイバートされました。</div>';
+
+  // Progress
+  html += '<div class="pbar"><div class="pbar-lbl"><span>Departure</span><span>Arrival</span></div>';
+  html += '<div class="pbar-track"><div class="pbar-fill" style="width:' + (f.progress_percent || 0) + '%"></div></div></div>';
+
+  // JSON toggle
+  html += '<span class="jtoggle" onclick="toggleJson()">▶ API Response (JSON)</span>';
+  html += '<div id="json-wrap" style="display:none" class="jwrap"><pre>' + JSON.stringify(f, null, 2) + '</pre></div>';
+
+  html += '</div></div>';
+  document.getElementById("result-area").innerHTML = html;
+}
+
+function gi(label, val, cls) {
+  return '<div class="gi"><div class="gi-label">' + label + '</div><div class="gi-val' + (cls ? " " + cls : "") + '">' + val + '</div></div>';
+}
+
+function toggleJson() {
+  state.showJson = !state.showJson;
+  var wrap = document.getElementById("json-wrap");
+  var toggle = document.querySelector(".jtoggle");
+  if (state.showJson) {
+    wrap.style.display = "block";
+    toggle.textContent = "▼ API Response (JSON) を閉じる";
+  } else {
+    wrap.style.display = "none";
+    toggle.textContent = "▶ API Response (JSON)";
+  }
+}
+
+function renderAirport() {
+  var apt = state.aptFlights;
+  if (!apt) return;
+  var dir = state.aptDir;
+  var flights = apt.flights;
+
+  var html = '<div class="card"><div class="card-head"><div>';
+  html += '<span class="card-ident">' + apt.airport + '</span>';
+  html += '<span class="card-airline">' + (dir === "departures" ? "出発便一覧" : "到着便一覧") + '</span></div>';
+  html += '<span class="st st-scheduled">' + flights.length + ' flights</span></div>';
+  html += '<div style="padding:12px 16px">';
+
+  // Tabs
+  html += '<div class="apt-tabs">';
+  html += '<button class="' + (dir === "departures" ? "on" : "") + '" onclick="switchAptDir(\'departures\')">出発便</button>';
+  html += '<button class="' + (dir === "arrivals" ? "on" : "") + '" onclick="switchAptDir(\'arrivals\')">到着便</button>';
+  html += '</div>';
+
+  if (flights.length === 0) {
+    html += '<div style="text-align:center;padding:24px;color:#ccc;font-size:12px">便がありません</div>';
+  } else {
+    html += '<table class="atbl"><thead><tr>';
+    html += '<th>便名</th><th>IATA</th>';
+    html += '<th>' + (dir === "departures" ? "行先" : "出発地") + '</th>';
+    html += '<th>予定時刻</th><th>ゲート</th><th>ステータス</th></tr></thead><tbody>';
+
+    flights.forEach(function(r) {
+      var dest = dir === "departures" ? (r.destination.code_iata || "—") : (r.origin.code_iata || "—");
+      var time = dir === "departures" ? fmtTime(r.scheduled_out) : fmtTime(r.scheduled_in);
+      var gate = dir === "departures" ? (r.gate_origin || "—") : (r.gate_destination || "—");
+      var clickIdent = r.ident_iata || r.ident;
+
+      html += '<tr onclick="flightFromAirport(\'' + clickIdent + '\')">';
+      html += '<td class="mono">' + r.ident + '</td>';
+      html += '<td class="iata-col">' + (r.ident_iata || "—") + '</td>';
+      html += '<td class="mono">' + dest + '</td>';
+      html += '<td>' + time + '</td>';
+      html += '<td style="color:#c9a96e">' + gate + '</td>';
+      html += '<td><span class="st ' + stCls(r.status) + '" style="font-size:9px">' + r.status + '</span></td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+  }
+
+  html += '<div class="cost-note">この検索で1 APIコール ($0.005 / 約0.75円) を消費しました</div>';
+  html += '</div></div>';
+  document.getElementById("result-area").innerHTML = html;
+}
+
+function switchAptDir(dir) {
+  state.aptDir = dir;
+  var airport = state.aptFlights ? state.aptFlights.airport : document.getElementById("search-input").value.trim();
+  searchAirport(airport, dir);
+}
+
+function flightFromAirport(ident) {
+  switchTab("flight");
+  document.getElementById("search-input").value = ident;
+  searchFlight(ident);
+}
+
+// Init
+renderQuickButtons();
+document.getElementById("result-area").innerHTML = '<div class="empty"><div class="empty-icon">↑</div><p>フライトNo または 空港コードを入力して検索</p></div>';
+</script>
+</body>
+</html>
