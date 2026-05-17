@@ -204,6 +204,30 @@ async function apiCall(params) {
   document.getElementById("api-count").textContent = state.apiCalls;
   return data;
 }
+function getDateRange() {
+  var startVal = document.getElementById("date-start").value;
+  var endVal = document.getElementById("date-end").value;
+  var now = new Date();
+
+  if (!startVal) {
+    var sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+    startVal = sixMonthsAgo.toISOString().slice(0, 10);
+  }
+  if (!endVal) {
+    var sixMonthsLater = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate());
+    endVal = sixMonthsLater.toISOString().slice(0, 10);
+  }
+
+  var startDate = new Date(startVal);
+  var endDate = new Date(endVal);
+  if (startDate > endDate) {
+    var tmp = startVal;
+    startVal = endVal;
+    endVal = tmp;
+  }
+
+  return { start: startVal, end: endVal };
+}
 
 async function searchFlight(ident) {
   clearAll();
@@ -213,10 +237,9 @@ async function searchFlight(ident) {
 
   try {
     var params = { action: "flight", ident: ident };
-    var startDate = document.getElementById("date-start").value;
-    var endDate = document.getElementById("date-end").value;
-    if (startDate) params.start = startDate;
-    if (endDate) params.end = endDate;
+    var range = getDateRange();
+    params.start = range.start;
+    params.end = range.end;
 
     var data = await apiCall(params);
 
@@ -251,10 +274,9 @@ async function searchAirport(airport, dir) {
 
   try {
     var params = { action: state.aptDir, airport: airport.toUpperCase() };
-    var startDate = document.getElementById("date-start").value;
-    var endDate = document.getElementById("date-end").value;
-    if (startDate) params.start = startDate;
-    if (endDate) params.end = endDate;
+    var range = getDateRange();
+    params.start = range.start;
+    params.end = range.end;
 
     var data = await apiCall(params);
     state.aptFlights = { airport: data.airport, flights: data.flights || [] };
