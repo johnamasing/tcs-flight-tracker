@@ -221,15 +221,13 @@ function getDateRange() {
     endVal = sixMonthsLater.toISOString().slice(0, 10);
   }
 
-  var startDate = new Date(startVal);
-  var endDate = new Date(endVal);
-  if (startDate > endDate) {
+  if (startVal > endVal) {
     var tmp = startVal;
     startVal = endVal;
     endVal = tmp;
   }
 
-  return { start: startVal, end: endVal };
+  return { start: startVal + "T00:00:00Z", end: endVal + "T23:59:59Z" };
 }
 
 async function searchFlight(ident) {
