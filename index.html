@@ -129,7 +129,7 @@ pre{font-family:'DM Mono',monospace;font-size:10.5px;color:#999;white-space:pre-
     <input type="date" id="date-start" />
     <span>〜</span>
     <input type="date" id="date-end" />
-    <span class="date-hint">（空欄＝直近を表示。from/to両方指定で期間検索）</span>
+    <span class="date-hint" id="date-hint">（空欄＝直近を表示。from のみ指定で+30日分検索）</span>
   </div>
 
   <div class="qk" id="quick-buttons"></div>
@@ -232,7 +232,14 @@ async function searchFlight(ident) {
   document.getElementById("search-btn").disabled = true;
 
   try {
-    var params = { action: "flight", ident: ident, max_pages: 10 };
+    var params = { action: "flight", ident: ident };
+    var startEl = document.getElementById("date-start");
+    var endEl = document.getElementById("date-end");
+    if (startEl.value && !endEl.value) {
+      var d = new Date(startEl.value);
+      d.setDate(d.getDate() + 30);
+      endEl.value = d.toISOString().slice(0, 10);
+    }
     var range = getDateRange();
     if (range) {
       if (range.start) params.start = range.start;
@@ -271,7 +278,7 @@ async function searchAirport(airport, dir) {
   document.getElementById("search-btn").disabled = true;
 
   try {
-    var params = { action: state.aptDir, airport: airport.toUpperCase(), max_pages: 10 };
+    var params = { action: state.aptDir, airport: airport.toUpperCase() };
     var range = getDateRange();
     if (range) {
       if (range.start) params.start = range.start;
