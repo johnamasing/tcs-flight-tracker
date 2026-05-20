@@ -354,7 +354,7 @@ function doGet(e) {
       if (!airport) return makeResponse({ success: false, error: "airport パラメータが必要です。" });
 
       var type = action;
-      var aptPath = "/airports/" + airport + "/flights/" + type + "?max_pages=1&type=Airline";
+      var aptPath = "/airports/" + airport + "/flights/" + type + "?max_pages=5&type=Airline";
       var startDate = toDateStr(params.start || "");
       var endDate = toDateStr(params.end || "");
       var dateNote = null;

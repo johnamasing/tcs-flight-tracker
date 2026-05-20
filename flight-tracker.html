@@ -165,6 +165,8 @@ function switchTab(t) {
     ? "フライトNo（例: JL5, NH10, JAL5）"
     : "空港コード（例: NRT, HND, KIX）";
   document.getElementById("search-input").value = "";
+  document.getElementById("date-start").value = "";
+  document.getElementById("date-end").value = "";
   renderQuickButtons();
   clearAll();
 }
