@@ -359,10 +359,16 @@ function doGet(e) {
       if (!airport) return makeResponse({ success: false, error: "airport パラメータが必要です。" });
 
       var type = action;
-      var aptPath = "/airports/" + airport + "/flights/" + type + "?max_pages=5&type=Airline";
       var startDate = toDateStr(params.start || "");
       var endDate = toDateStr(params.end || "");
       var dateNote = null;
+
+      // 日付指定時は scheduled_ エンドポイントを使用（予定便を取得）
+      var endpoint = type;
+      if (startDate || endDate) {
+        endpoint = "scheduled_" + type;
+      }
+      var aptPath = "/airports/" + airport + "/flights/" + endpoint + "?max_pages=5&type=Airline";
 
       var tryPath = aptPath;
       if (startDate) tryPath += "&start=" + startDate + "T00:00:00Z";
@@ -370,12 +376,14 @@ function doGet(e) {
 
       var data = callAeroAPI(tryPath);
       if (data.error && data.message && data.message.indexOf("INVALID_ARGUMENT") !== -1) {
-        dateNote = "指定日はAPI検索範囲外のため、直近の発着便を表示しています。";
-        data = callAeroAPI(aptPath);
+        dateNote = "指定日はAPI検索範囲外（過去10日〜未来2日）のため、直近の発着便を表示しています。";
+        var fallbackPath = "/airports/" + airport + "/flights/" + endpoint + "?max_pages=5&type=Airline";
+        data = callAeroAPI(fallbackPath);
+        endpoint = endpoint;
       }
       if (data.error) return makeResponse({ success: false, error: "API Error: " + (data.message || "Unknown") });
 
-      var flights = data[type] || [];
+      var flights = data[endpoint] || [];
       if (startDate || endDate) {
         var filtered = flights.filter(function(f) {
           var t = (type === "departures") ? (f.scheduled_out || "") : (f.scheduled_in || "");
