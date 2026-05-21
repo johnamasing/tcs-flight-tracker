@@ -281,8 +281,11 @@ function doGet(e) {
       flights = filterByDate(allFlights, startDate, endDate);
       debugInfo.flightsFiltered = flights.length;
 
-      // ── STEP 2: 日付フィルタ後0件 + 日付指定あり → /schedules（チャンク分割対応） ──
-      if (flights.length === 0 && (startDate || endDate)) {
+      // /flights データを統一形式に変換
+      flights = flights.map(function(f) { return convertFlight(f, ident, originalIdent); });
+
+      // ── STEP 2: 日付指定あり → /schedules も取得して /flights 結果とマージ ──
+      if (startDate || endDate) {
         var schedStart = startDate || endDate;
         var schedEnd = endDate || "";
         if (!schedEnd) {
@@ -292,53 +295,55 @@ function doGet(e) {
         }
         var icaoParts = splitIdent(ident);
 
-        // 3週間ごとにチャンク分割
-        var chunks = chunkDateRange(schedStart, schedEnd);
-        debugInfo.scheduleChunks = chunks.length;
-        var allScheduled = [];
-        var allDebugPaths = [];
-        var startTime = Date.now();
-        var truncated = false;
+        if (originICAO && destICAO || icaoParts) {
+          // 3週間ごとにチャンク分割
+          var chunks = chunkDateRange(schedStart, schedEnd);
+          debugInfo.scheduleChunks = chunks.length;
+          var allScheduled = [];
+          var allDebugPaths = [];
+          var startTime = Date.now();
+          var truncated = false;
 
-        for (var ci = 0; ci < chunks.length; ci++) {
-          if (Date.now() - startTime > 25000) { truncated = true; break; }
-          var chunkResult = searchSchedules(ident, icaoParts, originICAO, destICAO, chunks[ci].start, chunks[ci].end);
-          allScheduled = allScheduled.concat(chunkResult.scheduled);
-          allDebugPaths = allDebugPaths.concat(chunkResult.debugPaths);
+          for (var ci = 0; ci < chunks.length; ci++) {
+            if (Date.now() - startTime > 25000) { truncated = true; break; }
+            var chunkResult = searchSchedules(ident, icaoParts, originICAO, destICAO, chunks[ci].start, chunks[ci].end);
+            allScheduled = allScheduled.concat(chunkResult.scheduled);
+            allDebugPaths = allDebugPaths.concat(chunkResult.debugPaths);
+          }
+
+          debugInfo.scheduleAttempts = allDebugPaths;
+
+          if (allScheduled.length > 0) {
+            // 既存 /flights/ 結果の日付セットを構築（重複回避用）
+            var existingKeys = {};
+            flights.forEach(function(f) {
+              existingKeys[(f.scheduled_out || "").substring(0, 10)] = true;
+            });
+
+            // /flights/ に無い日付のスケジュールのみ追加
+            allScheduled.forEach(function(s) {
+              var dateKey = (s.scheduled_out || "").substring(0, 10);
+              if (!existingKeys[dateKey]) {
+                flights.push(convertScheduleFlight(s, airportInfo));
+                existingKeys[dateKey] = true;
+              }
+            });
+
+            source = "mixed";
+            dateNote = "全" + flights.length + "件を表示中（直近便は実績データ、それ以降はスケジュールデータ）。";
+            if (truncated) dateNote += "（タイムアウトにより一部のみ取得）";
+          }
         }
 
-        debugInfo.scheduleAttempts = allDebugPaths;
-
-        // 重複除去（ident + scheduled_out で一意判定）
-        var seen = {};
-        allScheduled = allScheduled.filter(function(s) {
-          var key = (s.ident || "") + "|" + (s.scheduled_out || "");
-          if (seen[key]) return false;
-          seen[key] = true;
-          return true;
-        });
-
-        // scheduled_out 昇順でソート
-        allScheduled.sort(function(a, b) {
-          return (a.scheduled_out || "").localeCompare(b.scheduled_out || "");
-        });
-
-        if (allScheduled.length > 0) {
-          flights = allScheduled.map(function(s) {
-            return convertScheduleFlight(s, airportInfo);
-          });
-          source = "schedules";
-          dateNote = "スケジュールデータ（航空会社公開時刻表）" + allScheduled.length + "件を表示中。ゲート・遅延情報は出発2日前から利用可能です。";
-          if (truncated) dateNote += "（タイムアウトにより一部のみ取得）";
-        } else {
-          dateNote = "指定期間（" + schedStart + " 〜 " + schedEnd + "）のスケジュールデータが見つかりませんでした。";
+        if (flights.length === 0) {
+          dateNote = "指定期間（" + schedStart + " 〜 " + schedEnd + "）のデータが見つかりませんでした。";
         }
       }
 
-      // /flights データの場合は変換
-      if (source === "flights") {
-        flights = flights.map(function(f) { return convertFlight(f, ident, originalIdent); });
-      }
+      // 日付昇順でソート
+      flights.sort(function(a, b) {
+        return (a.scheduled_out || "").localeCompare(b.scheduled_out || "");
+      });
 
       result = {
         success: true,
