@@ -1,5 +1,5 @@
 /**
- * FlightAware AeroAPI Proxy  v8.0
+ * FlightAware AeroAPI Proxy  v8.1
  * Google Apps Script
  *
  * /flights/{ident}  → 日付なしで呼出、GAS側で日付フィルタ（直近〜2日先）
@@ -11,6 +11,21 @@
 
 var AEROAPI_KEY = "mxqCgIkpfd7dBfS8XLlu8FkI7Msn3scP";
 var AEROAPI_BASE = "https://aeroapi.flightaware.com/aeroapi";
+
+var AIRPORT_IATA_TO_ICAO = {
+  "HND": "RJTT", "NRT": "RJAA", "KIX": "RJBB", "ITM": "RJOO",
+  "FUK": "RJFF", "CTS": "RJCC", "NGO": "RJGG", "OKA": "ROAH",
+  "SDJ": "RJSS", "HIJ": "RJOA", "KOJ": "RJFK", "NGS": "RJFU",
+  "KMJ": "RJFT", "OIT": "RJFO", "MYJ": "RJOM", "TAK": "RJOT",
+  "KMI": "RJFM", "AOJ": "RJSA", "AKJ": "RJEC", "MMB": "RJCM",
+  "ICN": "RKSI", "GMP": "RKSS", "PUS": "RKPK",
+  "PEK": "ZBAA", "PVG": "ZSPD", "HKG": "VHHH", "TPE": "RCTP",
+  "SIN": "WSSS", "BKK": "VTBS", "MNL": "RPLL", "KUL": "WMKK",
+  "CGK": "WIII", "HAN": "VVNB", "SGN": "VVTS",
+  "SYD": "YSSY", "LAX": "KLAX", "SFO": "KSFO", "JFK": "KJFK",
+  "LHR": "EGLL", "CDG": "LFPG", "DXB": "OMDB", "DFW": "KDFW",
+  "ORD": "KORD", "SEA": "KSEA", "YVR": "CYVR", "DEL": "VIDP"
+};
 
 var AIRLINE_IATA_TO_ICAO = {
   "JL": "JAL", "NH": "ANA", "MM": "APJ", "GK": "JJP", "BC": "SKY",
@@ -355,8 +370,9 @@ function doGet(e) {
       };
 
     } else if (action === "departures" || action === "arrivals") {
-      var airport = (params.airport || "").toUpperCase().replace(/\s/g, "");
-      if (!airport) return makeResponse({ success: false, error: "airport パラメータが必要です。" });
+      var airportRaw = (params.airport || "").toUpperCase().replace(/\s/g, "");
+      if (!airportRaw) return makeResponse({ success: false, error: "airport パラメータが必要です。" });
+      var airport = AIRPORT_IATA_TO_ICAO[airportRaw] || airportRaw;
 
       var type = action;
       var startDate = toDateStr(params.start || "");
@@ -398,7 +414,7 @@ function doGet(e) {
       }
 
       result = {
-        success: true, airport: airport, type: type, count: flights.length, dateNote: dateNote,
+        success: true, airport: airportRaw, resolved_airport: airport, type: type, count: flights.length, dateNote: dateNote,
         flights: flights.map(function(f) {
           return {
             ident: f.ident || "", ident_iata: f.ident_iata || "",
@@ -421,7 +437,7 @@ function doGet(e) {
 
     } else {
       result = {
-        success: true, message: "FlightAware AeroAPI Proxy v8.0",
+        success: true, message: "FlightAware AeroAPI Proxy v8.1",
         usage: { flight: "?action=flight&ident=JL5", flight_future: "?action=flight&ident=JL5&start=2026-05-29&end=2026-06-28", departures: "?action=departures&airport=NRT" }
       };
     }
