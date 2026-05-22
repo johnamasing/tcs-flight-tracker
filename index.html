@@ -30,9 +30,11 @@ body{font-family:'Noto Sans JP',sans-serif;font-weight:300;background:#fff;color
 .srch button:disabled{background:#ccc;cursor:not-allowed}
 .date-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:11px;color:#999;flex-wrap:wrap}
 .date-row label{letter-spacing:.5px}
-.date-row input[type=date]{padding:8px 12px;border:1px solid #e0e0e0;font-family:'DM Mono',monospace;font-size:12px;color:#1a1a1a;outline:none;background:#fafafa;transition:border .3s}
-.date-row input[type=date]:focus{border-color:#c9a96e}
+.date-row input[type=text].date-input{width:120px;padding:8px 12px;border:1px solid #e0e0e0;font-family:'DM Mono',monospace;font-size:12px;color:#1a1a1a;outline:none;background:#fafafa;transition:border .3s}
+.date-row input[type=text].date-input:focus{border-color:#c9a96e}
 .date-row .date-hint{font-size:9px;color:#ccc}
+.date-clear{padding:4px 10px;border:1px solid #e0e0e0;background:#fff;color:#bbb;font-size:10px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s}
+.date-clear:hover{border-color:#c9a96e;color:#c9a96e}
 .qk{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap}
 .qk button{font-family:'DM Mono',monospace;font-size:11px;padding:5px 14px;background:#fff;border:1px solid #e0e0e0;color:#aaa;cursor:pointer;transition:all .2s}
 .qk button:hover{border-color:#c9a96e;color:#c9a96e}
@@ -126,10 +128,11 @@ pre{font-family:'DM Mono',monospace;font-size:10.5px;color:#999;white-space:pre-
 
   <div class="date-row" id="date-row">
     <label>発着日:</label>
-    <input type="date" id="date-start" />
+    <input type="text" class="date-input" id="date-start" placeholder="2026-05-22" maxlength="10" />
     <span>〜</span>
-    <input type="date" id="date-end" />
-    <span class="date-hint" id="date-hint">（空欄＝直近を表示。from のみ指定で+30日分検索）</span>
+    <input type="text" class="date-input" id="date-end" placeholder="2026-06-22" maxlength="10" />
+    <button class="date-clear" onclick="clearDates()">クリア</button>
+    <span class="date-hint" id="date-hint">（空欄＝直近を表示。from のみで+30日分検索）</span>
   </div>
 
   <div class="qk" id="quick-buttons"></div>
@@ -184,6 +187,11 @@ function quickSearch(val) {
   doSearch();
 }
 
+function clearDates() {
+  document.getElementById("date-start").value = "";
+  document.getElementById("date-end").value = "";
+}
+
 function clearAll() {
   document.getElementById("alias-area").innerHTML = "";
   document.getElementById("error-area").innerHTML = "";
@@ -235,13 +243,6 @@ async function searchFlight(ident) {
 
   try {
     var params = { action: "flight", ident: ident };
-    var startEl = document.getElementById("date-start");
-    var endEl = document.getElementById("date-end");
-    if (startEl.value && !endEl.value) {
-      var d = new Date(startEl.value);
-      d.setDate(d.getDate() + 30);
-      endEl.value = d.toISOString().slice(0, 10);
-    }
     var range = getDateRange();
     if (range) {
       if (range.start) params.start = range.start;
