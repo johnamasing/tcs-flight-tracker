@@ -30,8 +30,12 @@ body{font-family:'Noto Sans JP',sans-serif;font-weight:300;background:#fff;color
 .srch button:disabled{background:#ccc;cursor:not-allowed}
 .date-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:11px;color:#999;flex-wrap:wrap}
 .date-row label{letter-spacing:.5px}
-.date-row input[type=text].date-input{width:120px;padding:8px 12px;border:1px solid #e0e0e0;font-family:'DM Mono',monospace;font-size:12px;color:#1a1a1a;outline:none;background:#fafafa;transition:border .3s}
+.date-row .date-wrap{position:relative;display:inline-flex;align-items:center}
+.date-row input[type=text].date-input{width:100px;padding:8px 10px;border:1px solid #e0e0e0;font-family:'DM Mono',monospace;font-size:12px;color:#1a1a1a;outline:none;background:#fafafa;transition:border .3s;border-right:none}
 .date-row input[type=text].date-input:focus{border-color:#c9a96e}
+.date-row .date-pick-btn{padding:8px 8px;border:1px solid #e0e0e0;background:#fafafa;color:#bbb;font-size:13px;cursor:pointer;line-height:1;transition:all .2s}
+.date-row .date-pick-btn:hover{border-color:#c9a96e;color:#c9a96e}
+.date-row .date-hidden{position:absolute;right:0;top:0;width:36px;height:100%;opacity:0;cursor:pointer}
 .date-row .date-hint{font-size:9px;color:#ccc}
 .date-clear{padding:4px 10px;border:1px solid #e0e0e0;background:#fff;color:#bbb;font-size:10px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .2s}
 .date-clear:hover{border-color:#c9a96e;color:#c9a96e}
@@ -128,11 +132,19 @@ pre{font-family:'DM Mono',monospace;font-size:10.5px;color:#999;white-space:pre-
 
   <div class="date-row" id="date-row">
     <label>発着日:</label>
-    <input type="text" class="date-input" id="date-start" placeholder="2026-05-22" maxlength="10" />
+    <span class="date-wrap">
+      <input type="text" class="date-input" id="date-start" placeholder="5/22" maxlength="10" />
+      <span class="date-pick-btn">&#x1f4c5;</span>
+      <input type="date" class="date-hidden" id="date-start-picker" onchange="syncFromPicker('date-start',this.value)" />
+    </span>
     <span>〜</span>
-    <input type="text" class="date-input" id="date-end" placeholder="2026-06-22" maxlength="10" />
+    <span class="date-wrap">
+      <input type="text" class="date-input" id="date-end" placeholder="6/22" maxlength="10" />
+      <span class="date-pick-btn">&#x1f4c5;</span>
+      <input type="date" class="date-hidden" id="date-end-picker" onchange="syncFromPicker('date-end',this.value)" />
+    </span>
     <button class="date-clear" onclick="clearDates()">クリア</button>
-    <span class="date-hint" id="date-hint">（空欄＝直近を表示。from のみで+30日分検索）</span>
+    <span class="date-hint" id="date-hint">（空欄＝直近。5/22 や 2026/5/22 形式OK）</span>
   </div>
 
   <div class="qk" id="quick-buttons"></div>
@@ -192,6 +204,39 @@ function clearDates() {
   document.getElementById("date-end").value = "";
 }
 
+function syncFromPicker(targetId, val) {
+  if (!val) return;
+  var d = new Date(val + "T00:00:00");
+  var m = d.getMonth() + 1;
+  var day = d.getDate();
+  document.getElementById(targetId).value = m + "/" + day;
+}
+
+function parseDate(raw) {
+  if (!raw) return "";
+  var s = raw.trim().replace(/[−ー]/g, "-").replace(/[／]/g, "/");
+  var parts;
+  if (s.indexOf("-") !== -1) parts = s.split("-");
+  else if (s.indexOf("/") !== -1) parts = s.split("/");
+  else return "";
+  var year, month, day;
+  if (parts.length === 3) {
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    day = parseInt(parts[2], 10);
+    if (year < 100) year += 2000;
+  } else if (parts.length === 2) {
+    year = new Date().getFullYear();
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+  } else return "";
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return "";
+  if (month < 1 || month > 12 || day < 1 || day > 31) return "";
+  var mm = month < 10 ? "0" + month : "" + month;
+  var dd = day < 10 ? "0" + day : "" + day;
+  return year + "-" + mm + "-" + dd;
+}
+
 function clearAll() {
   document.getElementById("alias-area").innerHTML = "";
   document.getElementById("error-area").innerHTML = "";
@@ -218,8 +263,8 @@ async function apiCall(params) {
   return data;
 }
 function getDateRange() {
-  var startVal = document.getElementById("date-start").value;
-  var endVal = document.getElementById("date-end").value;
+  var startVal = parseDate(document.getElementById("date-start").value);
+  var endVal = parseDate(document.getElementById("date-end").value);
 
   if (!startVal && !endVal) return null;
 
