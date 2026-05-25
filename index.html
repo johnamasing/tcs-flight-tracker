@@ -93,7 +93,7 @@ pre{font-family:'DM Mono',monospace;font-size:10.5px;color:#999;white-space:pre-
 .cost-note{text-align:center;font-size:9px;color:#ddd;margin-top:8px;letter-spacing:.5px}
 .pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;max-height:200px;overflow-y:auto;padding:4px 0}
 .pick-header{font-size:11px;color:#999;margin-bottom:8px}
-.pick-route{font-family:"DM Mono",monospace;font-size:11px;color:#c9a96e;margin-bottom:4px}
+.pick-route{font-family:"DM Mono",monospace;font-size:11px;color:#c9a96e;margin-bottom:4px;margin-top:12px}
 .pick-count{font-size:10px;color:#bbb;letter-spacing:.5px;margin-bottom:10px}
 .pick button{padding:6px 14px;font-size:11px;cursor:pointer;border:1px solid #e0e0e0;background:#fff;color:#999;font-family:'DM Mono',monospace;transition:all .2s}
 .pick button.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
@@ -379,18 +379,33 @@ function delayCls(sec) {
 function renderPicker() {
   if (!state.flights || state.flights.length <= 1) return;
   var selIdx = state.flights.indexOf(state.selected);
-  var first = state.flights[0];
-  var originCode = (first.origin && first.origin.code_iata) || "?";
-  var destCode = (first.destination && first.destination.code_iata) || "?";
-  var html = '<div class="pick-header">' + state.flights.length + '件のフライトが見つかりました（日付を選択）:</div>';
-  html += '<div class="pick-route">' + originCode + ' → ' + destCode + '</div>';
-  html += '<div class="pick-count">全' + state.flights.length + '件中 ' + (selIdx + 1) + '件目を表示中</div>';
-  html += '<div class="pick">';
+
+  var routes = {};
+  var routeOrder = [];
   state.flights.forEach(function(fl, i) {
-    var cls = state.selected === fl ? "on" : "";
-    html += '<button class="' + cls + '" onclick="selectFlight(' + i + ')">' + fmtDateTime(fl.scheduled_out || fl.scheduled_in) + '</button>';
+    var o = (fl.origin && fl.origin.code_iata) || "?";
+    var d = (fl.destination && fl.destination.code_iata) || "?";
+    var key = o + " → " + d;
+    if (!routes[key]) { routes[key] = []; routeOrder.push(key); }
+    routes[key].push({ flight: fl, index: i });
   });
+
+  var html = '<div class="pick-header">' + state.flights.length + '件のフライトが見つかりました';
+  if (routeOrder.length > 1) html += '（' + routeOrder.length + 'ルート）';
   html += '</div>';
+  html += '<div class="pick-count">全' + state.flights.length + '件中 ' + (selIdx + 1) + '件目を表示中</div>';
+
+  routeOrder.forEach(function(routeKey) {
+    var items = routes[routeKey];
+    html += '<div class="pick-route">' + routeKey + '（' + items.length + '件）</div>';
+    html += '<div class="pick">';
+    items.forEach(function(item) {
+      var cls = state.selected === item.flight ? "on" : "";
+      html += '<button class="' + cls + '" onclick="selectFlight(' + item.index + ')">' + fmtDateTime(item.flight.scheduled_out || item.flight.scheduled_in) + '</button>';
+    });
+    html += '</div>';
+  });
+
   document.getElementById("pick-area").innerHTML = html;
 }
 
