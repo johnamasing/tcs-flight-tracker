@@ -1,5 +1,5 @@
 /**
- * FlightAware AeroAPI Proxy  v8.1
+ * FlightAware AeroAPI Proxy  v8.2
  * Google Apps Script
  *
  * /flights/{ident}  → 日付なしで呼出、GAS側で日付フィルタ（直近〜2日先）
@@ -117,54 +117,44 @@ function filterByDate(flights, start, end) {
 /**
  * /schedules で未来のスケジュール検索（単一チャンク）
  * 試行順序:
- *   1. origin + destination + airline + flight_number (最も特定的)
- *   2. airline + flight_number のみ (ルートフィルタなし)
- *   3. IATA airline コードでリトライ
- *   4. origin + destination のみ → GAS側でフィルタ (fallback)
+ *   1. airline + flight_number のみ (全ルート取得、マルチレグ対応)
+ *   2. IATA airline コードでリトライ
+ *   3. origin + destination のみ → GAS側でフィルタ (fallback)
  */
 function searchSchedules(icaoIdent, origParts, origin, destination, startDate, endDate) {
   var basePath = "/schedules/" + startDate + "/" + endDate;
   var debugPaths = [];
 
-  // 試行1: origin + destination + airline + flight_number
-  if (origin && destination && origParts) {
-    var p1 = basePath + "?origin=" + origin + "&destination=" + destination + "&airline=" + origParts.airline + "&flight_number=" + origParts.flightNumber + "&max_pages=3";
+  // 試行1: airline + flight_number のみ（全ルート取得）
+  if (origParts) {
+    var p1 = basePath + "?airline=" + origParts.airline + "&flight_number=" + origParts.flightNumber + "&max_pages=3";
     var d1 = callAeroAPI(p1);
     var count1 = (!d1.error && d1.scheduled) ? d1.scheduled.length : 0;
     debugPaths.push({ path: p1, ok: !d1.error, count: count1 });
     if (count1 > 0) return { scheduled: d1.scheduled, debugPaths: debugPaths };
   }
 
-  // 試行2: airline + flight_number のみ（ルートフィルタなし）
-  if (origParts) {
-    var p2 = basePath + "?airline=" + origParts.airline + "&flight_number=" + origParts.flightNumber + "&max_pages=3";
-    var d2 = callAeroAPI(p2);
-    var count2 = (!d2.error && d2.scheduled) ? d2.scheduled.length : 0;
-    debugPaths.push({ path: p2, ok: !d2.error, count: count2 });
-    if (count2 > 0) return { scheduled: d2.scheduled, debugPaths: debugPaths };
-  }
-
-  // 試行3: IATA airline コードでリトライ
+  // 試行2: IATA airline コードでリトライ
   if (origParts) {
     var iataAirline = null;
     for (var k in AIRLINE_IATA_TO_ICAO) { if (AIRLINE_IATA_TO_ICAO[k] === origParts.airline) { iataAirline = k; break; } }
     if (iataAirline) {
-      var p3 = basePath + "?airline=" + iataAirline + "&flight_number=" + origParts.flightNumber + "&max_pages=3";
-      var d3 = callAeroAPI(p3);
-      var count3 = (!d3.error && d3.scheduled) ? d3.scheduled.length : 0;
-      debugPaths.push({ path: p3, ok: !d3.error, count: count3 });
-      if (count3 > 0) return { scheduled: d3.scheduled, debugPaths: debugPaths };
+      var p2 = basePath + "?airline=" + iataAirline + "&flight_number=" + origParts.flightNumber + "&max_pages=3";
+      var d2 = callAeroAPI(p2);
+      var count2 = (!d2.error && d2.scheduled) ? d2.scheduled.length : 0;
+      debugPaths.push({ path: p2, ok: !d2.error, count: count2 });
+      if (count2 > 0) return { scheduled: d2.scheduled, debugPaths: debugPaths };
     }
   }
 
-  // 試行4: origin + destination のみ → GAS側でフィルタ
+  // 試行3: origin + destination のみ → GAS側でフィルタ
   if (origin && destination) {
-    var p4 = basePath + "?origin=" + origin + "&destination=" + destination + "&max_pages=3";
-    var d4 = callAeroAPI(p4);
-    var all4 = (!d4.error && d4.scheduled) ? d4.scheduled : [];
-    debugPaths.push({ path: p4, ok: !d4.error, count: all4.length });
-    if (all4.length > 0) {
-      var filtered = all4.filter(function(s) { return s.ident === icaoIdent || s.ident_iata === (origParts ? origParts.airline + origParts.flightNumber : ""); });
+    var p3 = basePath + "?origin=" + origin + "&destination=" + destination + "&max_pages=3";
+    var d3 = callAeroAPI(p3);
+    var all3 = (!d3.error && d3.scheduled) ? d3.scheduled : [];
+    debugPaths.push({ path: p3, ok: !d3.error, count: all3.length });
+    if (all3.length > 0) {
+      var filtered = all3.filter(function(s) { return s.ident === icaoIdent || s.ident_iata === (origParts ? origParts.airline + origParts.flightNumber : ""); });
       if (filtered.length > 0) return { scheduled: filtered, debugPaths: debugPaths };
     }
   }
@@ -329,18 +319,24 @@ function doGet(e) {
           debugInfo.scheduleAttempts = allDebugPaths;
 
           if (allScheduled.length > 0) {
-            // 既存 /flights/ 結果の日付セットを構築（重複回避用）
+            // 既存 /flights/ 結果のキーを構築（日付+ルートで重複回避）
             var existingKeys = {};
             flights.forEach(function(f) {
-              existingKeys[(f.scheduled_out || "").substring(0, 10)] = true;
+              var dk = (f.scheduled_out || "").substring(0, 10);
+              var org = (f.origin && f.origin.code_icao) || "";
+              var dst = (f.destination && f.destination.code_icao) || "";
+              existingKeys[dk + "_" + org + "_" + dst] = true;
             });
 
-            // /flights/ に無い日付のスケジュールのみ追加
+            // /flights/ に無い日付+ルートのスケジュールのみ追加
             allScheduled.forEach(function(s) {
-              var dateKey = (s.scheduled_out || "").substring(0, 10);
-              if (!existingKeys[dateKey]) {
+              var dk = (s.scheduled_out || "").substring(0, 10);
+              var org = s.origin_icao || s.origin || "";
+              var dst = s.destination_icao || s.destination || "";
+              var key = dk + "_" + org + "_" + dst;
+              if (!existingKeys[key]) {
                 flights.push(convertScheduleFlight(s, airportInfo));
-                existingKeys[dateKey] = true;
+                existingKeys[key] = true;
               }
             });
 
@@ -437,7 +433,7 @@ function doGet(e) {
 
     } else {
       result = {
-        success: true, message: "FlightAware AeroAPI Proxy v8.1",
+        success: true, message: "FlightAware AeroAPI Proxy v8.2",
         usage: { flight: "?action=flight&ident=JL5", flight_future: "?action=flight&ident=JL5&start=2026-05-29&end=2026-06-28", departures: "?action=departures&airport=NRT" }
       };
     }
