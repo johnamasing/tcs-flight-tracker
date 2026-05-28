@@ -286,29 +286,48 @@ async function searchFlight(ident) {
   document.getElementById("loading-area").innerHTML = '<div class="loading"><span class="loading-dot">●</span> FlightAware API に問い合わせ中...</div>';
   document.getElementById("search-btn").disabled = true;
 
+  var range = getDateRange();
+
   try {
-    var params = { action: "flight", ident: ident };
-    var range = getDateRange();
-    if (range) {
-      if (range.start) params.start = range.start;
-      if (range.end) params.end = range.end;
+    // フェーズ1: /flights/ のみ（日付なし）→ 即座に表示
+    var data1 = await apiCall({ action: "flight", ident: ident });
+
+    if (data1.converted) {
+      document.getElementById("alias-area").innerHTML = '<div class="alias-hint">✓ 「' + data1.query + '」→「' + data1.resolved + '」に自動変換（IATA → ICAO）</div>';
     }
 
-    var data = await apiCall(params);
-
-    if (data.converted) {
-      document.getElementById("alias-area").innerHTML = '<div class="alias-hint">✓ 「' + data.query + '」→「' + data.resolved + '」に自動変換（IATA → ICAO）</div>';
-    }
-    if (data.dateNote) {
-      document.getElementById("alias-area").innerHTML += '<div class="alias-hint" style="color:#e67e22">⚠ ' + data.dateNote + '</div>';
-    }
-
-    if (data.flights && data.flights.length > 0) {
-      state.flights = data.flights;
-      state.selected = data.flights[0];
-      if (data.flights.length > 1) renderPicker();
+    if (data1.flights && data1.flights.length > 0) {
+      state.flights = data1.flights;
+      state.selected = data1.flights[0];
+      if (data1.flights.length > 1) renderPicker();
       renderFlight();
-    } else {
+    }
+
+    // フェーズ2: 日付指定あり → /schedules/ をバックグラウンドで追加取得
+    if (range) {
+      if (data1.flights && data1.flights.length > 0) {
+        document.getElementById("loading-area").innerHTML = '<div class="loading"><span class="loading-dot">●</span> スケジュールデータを取得中...</div>';
+      }
+
+      var params2 = { action: "flight", ident: ident };
+      if (range.start) params2.start = range.start;
+      if (range.end) params2.end = range.end;
+      var data2 = await apiCall(params2);
+
+      if (data2.dateNote) {
+        document.getElementById("alias-area").innerHTML += '<div class="alias-hint" style="color:#e67e22">⚠ ' + data2.dateNote + '</div>';
+      }
+
+      if (data2.flights && data2.flights.length > 0) {
+        state.flights = data2.flights;
+        state.selected = data2.flights[0];
+        document.getElementById("pick-area").innerHTML = "";
+        if (data2.flights.length > 1) renderPicker();
+        renderFlight();
+      } else if (!data1.flights || data1.flights.length === 0) {
+        document.getElementById("error-area").innerHTML = '<div class="err-box">該当するフライトが見つかりませんでした。</div>';
+      }
+    } else if (!data1.flights || data1.flights.length === 0) {
       document.getElementById("error-area").innerHTML = '<div class="err-box">該当するフライトが見つかりませんでした。</div>';
     }
   } catch (e) {
